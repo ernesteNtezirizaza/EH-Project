@@ -1,4 +1,4 @@
-# Student Learning Platform
+# EmpowerHer Platform
 
 A comprehensive web application for managing student learning, progress tracking, and user management.
 
