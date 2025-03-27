@@ -3,9 +3,15 @@ import React, { createContext, useContext, useEffect, useState, ReactNode } from
 // Define the shape of user data
 interface UserData {
   id: string;
+  firstName: string;
+  lastName: string;
   name: string;
+  username: string;
   email: string;
   role: string;
+  image: string;
+  verifiedAt: string;
+  isVerified: string;
 }
 
 // Define the shape of the AuthContext value

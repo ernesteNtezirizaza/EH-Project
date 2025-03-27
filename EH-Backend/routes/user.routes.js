@@ -136,7 +136,7 @@ router.put("/users/:id", controller.updateUser);
  *         description: Cannot delete the user
  */
 
-router.delete("/users/:id", [protect, isAdmin], controller.deleteUser);
+router.delete("/users/:id", controller.deleteUser);
 
 /**
  * @swagger
@@ -144,8 +144,6 @@ router.delete("/users/:id", [protect, isAdmin], controller.deleteUser);
  *   post:
  *     summary: Upload user profile picture
  *     tags: [Users]
- *     security:
- *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: id

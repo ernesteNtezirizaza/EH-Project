@@ -1,234 +1,385 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, UserPlus, Filter, User, UserCheck, UserX, MoreVertical, Edit, Trash } from 'lucide-react';
+import { Search, UserPlus, Edit, Trash, Check, X } from 'lucide-react';
 import { Badge } from "@/components/ui/badge";
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
-} from "@/components/ui/dropdown-menu";
-import { 
-  Dialog, 
-  DialogContent, 
-  DialogDescription, 
-  DialogFooter, 
-  DialogHeader, 
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
   DialogTitle
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pagination, PaginationContent, PaginationItem, PaginationLink, PaginationNext, PaginationPrevious } from '@/components/ui/pagination';
 import { useToast } from "@/hooks/use-toast";
+import axios from 'axios';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 
-const UserManagement = () => {
+const API_BASE_URL = import.meta.env.VITE_BASE_URL;
+
+interface User {
+  id: number;
+  firstName: string;
+  lastName: string;
+  username: string;
+  email: string;
+  roleId: number;
+  Role: { id: number; name: string };
+  isVerified: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface Role {
+  id: number;
+  name: string;
+}
+
+const UserManagement: React.FC = () => {
   const { toast } = useToast();
+  const [users, setUsers] = useState<User[]>([]);
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [totalUsers, setTotalUsers] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
+
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [selectedUser, setSelectedUser] = useState<any>(null);
-  
-  // Mock data - in a real app, fetch this from your API
-  const [users, setUsers] = useState([
-    { id: 1, name: "Alex Johnson", email: "alex@example.com", role: "student", status: "active", joinDate: "2023-06-15", lastActive: "2023-08-20" },
-    { id: 2, name: "Sarah Miller", email: "sarah@example.com", role: "student", status: "active", joinDate: "2023-05-22", lastActive: "2023-08-19" },
-    { id: 3, name: "David Wilson", email: "david@example.com", role: "mentor", status: "active", joinDate: "2023-04-10", lastActive: "2023-08-21" },
-    { id: 4, name: "Emily Brown", email: "emily@example.com", role: "student", status: "inactive", joinDate: "2023-03-05", lastActive: "2023-07-30" },
-    { id: 5, name: "James Lee", email: "james@example.com", role: "admin", status: "active", joinDate: "2023-02-18", lastActive: "2023-08-21" },
-    { id: 6, name: "Jessica Clark", email: "jessica@example.com", role: "student", status: "pending", joinDate: "2023-08-10", lastActive: "2023-08-10" },
-    { id: 7, name: "Michael Smith", email: "michael@example.com", role: "mentor", status: "active", joinDate: "2023-01-20", lastActive: "2023-08-15" },
-    { id: 8, name: "Laura Davis", email: "laura@example.com", role: "student", status: "active", joinDate: "2023-07-05", lastActive: "2023-08-18" },
-  ]);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
-  const handleCreateUser = (event: React.FormEvent) => {
+  const [newUser, setNewUser] = useState({
+    firstName: '',
+    lastName: '',
+    username: '',
+    email: '',
+    password: '',
+    roleId: '',
+  });
+
+  const [editUser, setEditUser] = useState<Partial<User>>({});
+
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
+
+  useEffect(() => {
+    fetchUsers();
+    fetchRoles();
+  }, [page, rowsPerPage]);
+
+  const fetchUsers = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/v1/users?page=${page}&limit=${rowsPerPage}`);
+      setUsers(response.data.users);
+      setTotalUsers(response.data.total);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch users",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const fetchRoles = async () => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/api/v1/roles`);
+      setRoles(response.data.roles);
+    } catch (error) {
+      console.error("Error fetching roles:", error);
+      toast({
+        title: "Error",
+        description: "Failed to fetch roles",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const validateUser = (user: typeof newUser | Partial<User>, isEdit = false) => {
+    const errors: { [key: string]: string } = {};
+
+    if (!user.firstName?.trim()) {
+      errors.firstName = 'First Name is required';
+    }
+
+    if (!user.lastName?.trim()) {
+      errors.lastName = 'Last Name is required';
+    }
+
+    if (!user.username?.trim()) {
+      errors.username = 'Username is required';
+    }
+
+    if (!user.email?.trim()) {
+      errors.email = 'Email is required';
+    } else if (!/\S+@\S+\.\S+/.test(user.email)) {
+      errors.email = 'Email is invalid';
+    }
+
+    if (!isEdit && 'password' in user && !user.password?.trim()) {
+      errors.password = 'Password is required';
+    }
+
+    if (!user.roleId) {
+      errors.roleId = 'Role is required';
+    }
+
+    setErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleCreateUser = async (event: React.FormEvent) => {
     event.preventDefault();
-    // Here you would call your API to create a new user
-    // For now, just close the dialog and show a toast
-    setIsCreateDialogOpen(false);
-    toast({
-      title: "User Created",
-      description: "The new user has been successfully created.",
-    });
+
+    if (!validateUser(newUser)) {
+      return;
+    }
+
+    try {
+      await axios.post(`${API_BASE_URL}/api/v1/users`, newUser);
+      setIsCreateDialogOpen(false);
+      fetchUsers();
+      toast({
+        title: "Success",
+        description: "New user created successfully!",
+      });
+      resetNewUserForm();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to create user",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleEditUser = (event: React.FormEvent) => {
+  const handleEditUser = async (event: React.FormEvent) => {
     event.preventDefault();
-    // Here you would call your API to update the user
-    // For now, just close the dialog and show a toast
-    setIsEditDialogOpen(false);
-    toast({
-      title: "User Updated",
-      description: `${selectedUser?.name}'s information has been updated.`,
-    });
+
+    if (!selectedUser || !validateUser(editUser, true)) {
+      return;
+    }
+
+    try {
+      await axios.put(`${API_BASE_URL}/api/v1/users/${selectedUser.id}`, editUser);
+      setIsEditDialogOpen(false);
+      fetchUsers();
+      toast({
+        title: "Success",
+        description: "User updated successfully!",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to update user",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleDeleteUser = () => {
-    // Here you would call your API to delete the user
-    // For now, just filter out the user from the local state
-    setUsers(users.filter(user => user.id !== selectedUser?.id));
-    setIsDeleteDialogOpen(false);
-    toast({
-      title: "User Deleted",
-      description: `${selectedUser?.name} has been removed from the system.`,
-      variant: "destructive",
-    });
+  const handleDeleteUser = async () => {
+    if (!selectedUser) return;
+
+    try {
+      await axios.delete(`${API_BASE_URL}/api/v1/users/${selectedUser.id}`);
+      setIsDeleteDialogOpen(false);
+      fetchUsers();
+      toast({
+        title: "Success",
+        description: "User deleted successfully!",
+        variant: "destructive"
+      });
+      setSelectedUser(null);
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.response?.data?.message || "Failed to delete user",
+        variant: "destructive"
+      });
+    }
   };
 
-  const handleStatusChange = (userId: number, newStatus: string) => {
-    // Update user status in local state
-    setUsers(users.map(user => 
-      user.id === userId ? { ...user, status: newStatus } : user
-    ));
-    
-    // Show success toast
-    const user = users.find(u => u.id === userId);
-    toast({
-      title: "Status Updated",
-      description: `${user?.name}'s status has been set to ${newStatus}.`,
+  const resetNewUserForm = () => {
+    setNewUser({
+      firstName: '',
+      lastName: '',
+      username: '',
+      email: '',
+      password: '',
+      roleId: '',
     });
+    setErrors({});
   };
 
-  const filteredUsers = users.filter(user => 
-    user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  const handleEditOpen = (user: User) => {
+    setSelectedUser(user);
+    setEditUser({
+      id: user.id,
+      firstName: user.firstName,
+      lastName: user.lastName,
+      username: user.username,
+      email: user.email,
+      roleId: user.roleId || user.Role.id,
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleChangePage = (newPage: number) => {
+    setPage(newPage);
+  };
+
+  const handleChangeRowsPerPage = (event: React.ChangeEvent<HTMLSelectElement>) => {
+    const newRowsPerPage = parseInt(event.target.value, 10);
+    setRowsPerPage(newRowsPerPage);
+    setPage(0); // Reset to first page when changing rows per page
+  };
+
+  const filteredUsers = users.filter(user =>
+    user.firstName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    user.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    user.role.toLowerCase().includes(searchQuery.toLowerCase())
+    user.Role.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Calculate total pages
+  const totalPages = Math.ceil(totalUsers / rowsPerPage);
+
   return (
-    <div className="space-y-6 animate-fade-in">
-      <div className="flex flex-col space-y-2">
-        <h1 className="text-3xl font-bold">User Management</h1>
-        <p className="text-muted-foreground">Manage users, roles, and permissions</p>
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold">User Management</h1>
+          <p className="text-muted-foreground">Manage system users</p>
+        </div>
+        {/* <Button onClick={() => setIsCreateDialogOpen(true)}>
+          <UserPlus className="mr-2 h-4 w-4" />
+          Add User
+        </Button> */}
       </div>
 
-      <Card className="card-shadow">
+      <Card>
         <CardHeader>
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <CardTitle className="text-xl">Users</CardTitle>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Search users..."
-                  className="pl-8 w-full sm:w-[250px]"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                />
-              </div>
-              <Button variant="outline" size="icon">
-                <Filter className="h-4 w-4" />
-              </Button>
-              <Button onClick={() => setIsCreateDialogOpen(true)}>
-                <UserPlus className="h-4 w-4 mr-2" />
-                Add User
-              </Button>
+          <div className="flex items-center justify-between">
+            <CardTitle>Users</CardTitle>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Search users..."
+                className="pl-8 w-[250px]"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Email</TableHead>
-                  <TableHead>Role</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Join Date</TableHead>
-                  <TableHead>Last Active</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell className="font-medium">{user.name}</TableCell>
-                    <TableCell>{user.email}</TableCell>
-                    <TableCell>
-                      <Badge variant={
-                        user.role === "admin" ? "default" :
-                        user.role === "mentor" ? "secondary" : "outline"
-                      }>
-                        {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={
-                        user.status === "active" ? "default" :
-                        user.status === "inactive" ? "destructive" : "secondary"
-                      }>
-                        {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>{user.joinDate}</TableCell>
-                    <TableCell>{user.lastActive}</TableCell>
-                    <TableCell className="text-right">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => {
-                            setSelectedUser(user);
-                            setIsEditDialogOpen(true);
-                          }}>
-                            <Edit className="mr-2 h-4 w-4" />
-                            Edit
-                          </DropdownMenuItem>
-                          {user.status === "active" ? (
-                            <DropdownMenuItem onClick={() => handleStatusChange(user.id, "inactive")}>
-                              <UserX className="mr-2 h-4 w-4" />
-                              Deactivate
-                            </DropdownMenuItem>
-                          ) : (
-                            <DropdownMenuItem onClick={() => handleStatusChange(user.id, "active")}>
-                              <UserCheck className="mr-2 h-4 w-4" />
-                              Activate
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem 
-                            className="text-destructive"
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>First Name</TableHead>
+                <TableHead>Last Name</TableHead>
+                <TableHead>Username</TableHead>
+                <TableHead>Email</TableHead>
+                <TableHead>Role</TableHead>
+                <TableHead>Verified</TableHead>
+                <TableHead>Created At</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredUsers.map((user) => (
+                <TableRow key={user.id}>
+                  <TableCell>{user.firstName}</TableCell>
+                  <TableCell>{user.lastName}</TableCell>
+                  <TableCell>{user.username}</TableCell>
+                  <TableCell>{user.email}</TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">{user.Role.name}</Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      variant={user.isVerified ? 'default' : 'destructive'}
+                    >
+                      {user.isVerified ? 'Verified' : 'Not Verified'}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{user.createdAt}</TableCell>
+                  <TableCell>
+                    <div className="flex space-x-2">
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        onClick={() => handleEditOpen(user)}
+                      >
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            size="icon"
+                            variant="destructive"
                             onClick={() => {
                               setSelectedUser(user);
                               setIsDeleteDialogOpen(true);
                             }}
                           >
-                            <Trash className="mr-2 h-4 w-4" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          <div className="mt-4">
+                            <Trash className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              This action cannot be undone. This will permanently delete the user
+                              {selectedUser && ` "${selectedUser.firstName} ${selectedUser.lastName}"`}.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction onClick={handleDeleteUser}>
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+          {/* Pagination Section */}
+          <div className="flex items-center justify-end mt-4">
             <Pagination>
               <PaginationContent>
                 <PaginationItem>
-                  <PaginationPrevious href="#" />
+                  <PaginationPrevious
+                    onClick={() => handleChangePage(page - 1)}
+                    isActive={page > 0}
+                  />
                 </PaginationItem>
+                {[...Array(totalPages)].map((_, index) => (
+                  <PaginationItem key={index}>
+                    <PaginationLink
+                      isActive={page === index}
+                      onClick={() => handleChangePage(index)}
+                    >
+                      {index + 1}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
                 <PaginationItem>
-                  <PaginationLink href="#" isActive>1</PaginationLink>
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationLink href="#">2</PaginationLink>
-                </PaginationItem>
-                <PaginationItem>
-                  <PaginationNext href="#" />
+                  <PaginationNext
+                    onClick={() => handleChangePage(page + 1)}
+                    isActive={page < totalPages - 1}
+                  />
                 </PaginationItem>
               </PaginationContent>
             </Pagination>
@@ -238,41 +389,88 @@ const UserManagement = () => {
 
       {/* Create User Dialog */}
       <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Create New User</DialogTitle>
-            <DialogDescription>
-              Add a new user to the system. They will receive an email with instructions.
-            </DialogDescription>
+            <DialogDescription>Add a new user to the system</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateUser}>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="name" className="text-right">
-                  Name
-                </Label>
-                <Input id="name" className="col-span-3" />
+                <Label htmlFor="firstName" className="text-right">First Name</Label>
+                <Input
+                  id="firstName"
+                  name="firstName"
+                  className="col-span-3"
+                  value={newUser.firstName}
+                  onChange={(e) => setNewUser({ ...newUser, firstName: e.target.value })}
+                />
+                {errors.firstName && <p className="text-red-500 col-span-4 text-right">{errors.firstName}</p>}
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="email" className="text-right">
-                  Email
-                </Label>
-                <Input id="email" type="email" className="col-span-3" />
+                <Label htmlFor="lastName" className="text-right">Last Name</Label>
+                <Input
+                  id="lastName"
+                  name="lastName"
+                  className="col-span-3"
+                  value={newUser.lastName}
+                  onChange={(e) => setNewUser({ ...newUser, lastName: e.target.value })}
+                />
+                {errors.lastName && <p className="text-red-500 col-span-4 text-right">{errors.lastName}</p>}
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="role" className="text-right">
-                  Role
-                </Label>
-                <Select>
+                <Label htmlFor="username" className="text-right">Username</Label>
+                <Input
+                  id="username"
+                  name="username"
+                  className="col-span-3"
+                  value={newUser.username}
+                  onChange={(e) => setNewUser({ ...newUser, username: e.target.value })}
+                />
+                {errors.username && <p className="text-red-500 col-span-4 text-right">{errors.username}</p>}
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="email" className="text-right">Email</Label>
+                <Input
+                  id="email"
+                  name="email"
+                  type="email"
+                  className="col-span-3"
+                  value={newUser.email}
+                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
+                />
+                {errors.email && <p className="text-red-500 col-span-4 text-right">{errors.email}</p>}
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="password" className="text-right">Password</Label>
+                <Input
+                  id="password"
+                  name="password"
+                  type="password"
+                  className="col-span-3"
+                  value={newUser.password}
+                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
+                />
+                {errors.password && <p className="text-red-500 col-span-4 text-right">{errors.password}</p>}
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="roleId" className="text-right">Role</Label>
+                <Select
+                  value={newUser.roleId}
+                  onValueChange={(value) => setNewUser({ ...newUser, roleId: value })}
+                >
                   <SelectTrigger className="col-span-3">
-                    <SelectValue placeholder="Select role" />
+                    <SelectValue placeholder="Select a role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="student">Student</SelectItem>
-                    <SelectItem value="mentor">Mentor</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
+                    {roles.map((role) => (
+                      <SelectItem key={role.id} value={role.id.toString()}>
+                        {role.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+                {errors.roleId && <p className="text-red-500 col-span-4 text-right">{errors.roleId}</p>}
               </div>
             </div>
             <DialogFooter>
@@ -284,91 +482,82 @@ const UserManagement = () => {
 
       {/* Edit User Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Edit User</DialogTitle>
-            <DialogDescription>
-              Update user information and role.
-            </DialogDescription>
+            <DialogDescription>Update user information</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleEditUser}>
             <div className="grid gap-4 py-4">
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-name" className="text-right">
-                  Name
-                </Label>
-                <Input 
-                  id="edit-name" 
-                  className="col-span-3" 
-                  defaultValue={selectedUser?.name} 
+                <Label htmlFor="editFirstName" className="text-right">First Name</Label>
+                <Input
+                  id="editFirstName"
+                  name="firstName"
+                  className="col-span-3"
+                  value={editUser.firstName || ''}
+                  onChange={(e) => setEditUser({ ...editUser, firstName: e.target.value })}
                 />
+                {errors.firstName && <p className="text-red-500 col-span-4 text-right">{errors.firstName}</p>}
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-email" className="text-right">
-                  Email
-                </Label>
-                <Input 
-                  id="edit-email" 
-                  type="email" 
-                  className="col-span-3" 
-                  defaultValue={selectedUser?.email} 
+                <Label htmlFor="editLastName" className="text-right">Last Name</Label>
+                <Input
+                  id="editLastName"
+                  name="lastName"
+                  className="col-span-3"
+                  value={editUser.lastName || ''}
+                  onChange={(e) => setEditUser({ ...editUser, lastName: e.target.value })}
                 />
+                {errors.lastName && <p className="text-red-500 col-span-4 text-right">{errors.lastName}</p>}
               </div>
               <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-role" className="text-right">
-                  Role
-                </Label>
-                <Select defaultValue={selectedUser?.role}>
+                <Label htmlFor="editUsername" className="text-right">Username</Label>
+                <Input
+                  id="editUsername"
+                  name="username"
+                  className="col-span-3"
+                  value={editUser.username || ''}
+                  onChange={(e) => setEditUser({ ...editUser, username: e.target.value })}
+                />
+                {errors.username && <p className="text-red-500 col-span-4 text-right">{errors.username}</p>}
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="editEmail" className="text-right">Email</Label>
+                <Input
+                  id="editEmail"
+                  name="email"
+                  type="email"
+                  className="col-span-3"
+                  value={editUser.email || ''}
+                  onChange={(e) => setEditUser({ ...editUser, email: e.target.value })}
+                />
+                {errors.email && <p className="text-red-500 col-span-4 text-right">{errors.email}</p>}
+              </div>
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="editRoleId" className="text-right">Role</Label>
+                <Select
+                  value={editUser.roleId?.toString() || ''}
+                  onValueChange={(value) => setEditUser({ ...editUser, roleId: parseInt(value) })}
+                >
                   <SelectTrigger className="col-span-3">
-                    <SelectValue />
+                    <SelectValue placeholder="Select a role" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="student">Student</SelectItem>
-                    <SelectItem value="mentor">Mentor</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
+                    {roles.map((role) => (
+                      <SelectItem key={role.id} value={role.id.toString()}>
+                        {role.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
-              </div>
-              <div className="grid grid-cols-4 items-center gap-4">
-                <Label htmlFor="edit-status" className="text-right">
-                  Status
-                </Label>
-                <Select defaultValue={selectedUser?.status}>
-                  <SelectTrigger className="col-span-3">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="inactive">Inactive</SelectItem>
-                    <SelectItem value="pending">Pending</SelectItem>
-                  </SelectContent>
-                </Select>
+                {errors.roleId && <p className="text-red-500 col-span-4 text-right">{errors.roleId}</p>}
               </div>
             </div>
             <DialogFooter>
               <Button type="submit">Save Changes</Button>
             </DialogFooter>
           </form>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete User Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Delete User</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete {selectedUser?.name}? This action cannot be undone.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleDeleteUser}>
-              Delete
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

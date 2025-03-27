@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { NavLink } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -45,11 +44,11 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ role, collapsed }) 
             path: '/dashboard/student/quizzes',
             icon: <BookOpen className="w-5 h-5" />
           },
-          {
-            name: 'My Progress',
-            path: '/dashboard/student/progress',
-            icon: <CheckCircle className="w-5 h-5" />
-          }
+          // {
+          //   name: 'My Progress',
+          //   path: '/dashboard/student/progress',
+          //   icon: <CheckCircle className="w-5 h-5" />
+          // }
         ];
       case 'admin':
         return [
@@ -60,15 +59,20 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ role, collapsed }) 
             icon: <Users className="w-5 h-5" />
           },
           {
+            name: 'Role Management',
+            path: '/dashboard/admin/roles',
+            icon: <FileText className="w-5 h-5" />
+          },
+          {
             name: 'Quiz Management',
             path: '/dashboard/admin/quizzes',
             icon: <FileText className="w-5 h-5" />
           },
-          {
-            name: 'User Progress',
-            path: '/dashboard/admin/progress',
-            icon: <CheckCircle className="w-5 h-5" />
-          }
+          // {
+          //   name: 'User Progress',
+          //   path: '/dashboard/admin/progress',
+          //   icon: <CheckCircle className="w-5 h-5" />
+          // }
         ];
       case 'mentor':
         return [

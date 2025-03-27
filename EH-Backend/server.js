@@ -35,8 +35,9 @@ app.get("/", (req, res) => {
 const roleRoutes = require('./routes/role.routes');
 const userRoutes = require('./routes/user.routes');
 const authRoutes = require('./routes/auth.routes');
+const quizRoutes = require('./routes/quiz.routes');
 app.use("/uploads", express.static("uploads"));
-app.use('/api/v1', roleRoutes, userRoutes, authRoutes);
+app.use('/api/v1', roleRoutes, userRoutes, authRoutes, quizRoutes);
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpecs));
 
 const PORT = process.env.PORT;

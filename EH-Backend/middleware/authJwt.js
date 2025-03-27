@@ -1,50 +1,58 @@
 const jwt = require("jsonwebtoken");
 const db = require("../models");
-const User = db.user;
+const User = db.User;
 
 // Middleware to protect routes
 exports.protect = async (req, res, next) => {
   let token;
   
-  if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-    token = req.headers.authorization.split(' ')[1];
-  }
+  // Check for Authorization header
+  if (
+    req.headers.authorization && 
+    req.headers.authorization.startsWith('Bearer')
+  ) {
+    try {
+      // Extract token from header
+      token = req.headers.authorization.split(' ')[1];
 
-  if (!token) {
-    return res.status(401).json({ message: "No Token Provided!" });
-  }
+      // Verify token
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = await User.findByPk(decoded.id);
+      // Find user by decoded ID
+      const user = await User.findByPk(decoded.id);
 
-    if (!req.user) {
-      return res.status(404).json({ message: "User not found with this token" });
+      if (!user) {
+        return res.status(401).json({ 
+          message: "User not found. Invalid token." 
+        });
+      }
+
+      // Attach user to request object
+      req.user = user;
+      next();
+
+    } catch (error) {
+      console.error('Authentication Error:', error);
+      
+      // Specific error handling
+      if (error.name === 'JsonWebTokenError') {
+        return res.status(401).json({ 
+          message: "Invalid token format" 
+        });
+      } else if (error.name === 'TokenExpiredError') {
+        return res.status(401).json({ 
+          message: "Token has expired" 
+        });
+      }
+
+      return res.status(401).json({ 
+        message: "Not authorized to access this route",
+        error: error.message 
+      });
     }
-
-    next();
-  } catch (err) {
-    return res.status(401).json({ message: "Not authorized to access this route" });
-  }
-};
-
-// Middleware to check if user is admin
-exports.isAdmin = async (req, res, next) => {
-  try {
-    // Ensure req.user is populated by the protect middleware
-    if (!req.user) {
-      return res.status(404).json({ message: "User not found" });
-    }
-
-    const user = req.user;
-
-    // Check if user is admin (assuming roleId 2 is admin)
-    if (user.roleId !== 2) {
-      return res.status(403).json({ message: "Not authorized as admin" });
-    }
-
-    next();
-  } catch (err) {
-    return res.status(500).json({ message: "Internal Server Error" });
+  } else {
+    return res.status(401).json({ 
+      message: "No authorization token provided" 
+    });
   }
 };

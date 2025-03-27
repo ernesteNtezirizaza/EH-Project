@@ -118,6 +118,8 @@ exports.signin = async (req, res) => {
       roleId: user.roleId,
       roleName: roleName,
       image: user.image,
+      verifiedAt: user.createdAt,
+      isVerified: user.isVerified,
       accessToken: token,
       message: 'User Logged in Successfully',
     });
@@ -126,8 +128,6 @@ exports.signin = async (req, res) => {
     return res.status(500).send({ message: err.message });
   }
 };
-
-
 
 exports.resendToken = async (req, res) => {
   try {

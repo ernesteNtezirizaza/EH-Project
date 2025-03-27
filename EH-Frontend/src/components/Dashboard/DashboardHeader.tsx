@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { 
   Bell, 
@@ -20,6 +19,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext'; 
+import { useToast } from '@/components/ui/use-toast';
 
 interface DashboardHeaderProps {
   role: 'student' | 'admin' | 'mentor';
@@ -33,18 +34,19 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
   setCollapsed 
 }) => {
   const navigate = useNavigate();
+  const { userData, logout } = useAuth();
+  const { toast } = useToast();
   
-  // Mock user data - in a real app, this would come from your auth context
-  const user = {
-    name: 'Alex Johnson',
-    email: 'alex@example.com',
-    avatar: ''
-  };
-
   // Handle logout
   const handleLogout = () => {
-    // Add your logout logic here
-    navigate('/login');
+    logout();
+    
+    // Show toast message
+    toast({
+      title: "Logged Out",
+      description: "You have been successfully logged out.",
+      variant: "default"
+    });
   };
 
   return (
@@ -70,18 +72,21 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
             />
           </div>
 
-          <Button variant="ghost" size="icon" className="relative">
+          {/* <Button variant="ghost" size="icon" className="relative">
             <Bell className="h-5 w-5" />
             <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-primary"></span>
-          </Button>
+          </Button> */}
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-9 w-9 rounded-full">
                 <Avatar className="h-9 w-9">
-                  <AvatarImage src={user.avatar} alt={user.name} />
+                  <AvatarImage 
+                    src={userData?.image} 
+                    alt={userData?.name} 
+                  />
                   <AvatarFallback className="bg-primary/10 text-primary">
-                    {user.name.split(' ').map(n => n[0]).join('')}
+                    {userData?.name.split(' ').map(n => n[0]).join('')}
                   </AvatarFallback>
                 </Avatar>
               </Button>
@@ -89,18 +94,14 @@ const DashboardHeader: React.FC<DashboardHeaderProps> = ({
             <DropdownMenuContent align="end" className="w-56">
               <div className="flex items-center justify-start gap-2 p-2">
                 <div className="flex flex-col space-y-0.5">
-                  <p className="text-sm font-medium">{user.name}</p>
-                  <p className="text-xs text-muted-foreground">{user.email}</p>
+                  <p className="text-sm font-medium">{userData?.name}</p>
+                  <p className="text-xs text-muted-foreground">{userData?.email}</p>
                 </div>
               </div>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => navigate(`/dashboard/${role}/profile`)}>
                 <User className="w-4 h-4 mr-2" />
                 Profile
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => navigate(`/dashboard/${role}/settings`)}>
-                <Settings className="w-4 h-4 mr-2" />
-                Settings
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout}>

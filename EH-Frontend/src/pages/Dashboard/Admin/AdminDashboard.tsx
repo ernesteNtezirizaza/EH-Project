@@ -17,8 +17,21 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { useAuth } from '../../../contexts/AuthContext';
 
 const AdminDashboard = () => {
+
+  const { userData, isAuthenticated } = useAuth();
+  
+    // If not authenticated, show a login prompt or redirect
+    if (!isAuthenticated || !userData) {
+      return (
+        <div className="flex justify-center items-center h-full">
+          <p>Please log in to view your profile.</p>
+        </div>
+      );
+    }
+
   // Mock data - in a real app, fetch this from your API
   const stats = {
     totalUsers: 324,
@@ -46,8 +59,8 @@ const AdminDashboard = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col space-y-2">
-        <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-        <p className="text-muted-foreground">Manage your platform and users</p>
+        <h1 className="text-3xl font-bold">Welcome, {userData?.name}</h1>
+        {/* <p className="text-muted-foreground">Manage your platform</p> */}
       </div>
 
       {/* Stats Cards */}
@@ -170,7 +183,7 @@ const AdminDashboard = () => {
                     <p className="text-xs text-muted-foreground">
                       Created {quiz.created} • 
                       <span className={`ml-1 ${
-                        quiz.status === 'published' ? 'text-green-500' : 'text-amber-500'
+                        quiz.status === 'PUBLISHED' ? 'text-green-500' : 'text-amber-500'
                       }`}>
                         {quiz.status}
                       </span>
