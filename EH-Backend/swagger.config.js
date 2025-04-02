@@ -13,7 +13,7 @@ const options = {
     },
     servers: [
       {
-        url: "http://localhost:5000/api/v1"
+        url: "https://eh-backend-j67n.onrender.com/api/v1"
       },
     ],
     components: {
