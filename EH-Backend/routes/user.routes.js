@@ -80,6 +80,8 @@ router.get("/users", controller.getAllUsers);
 
 router.get("/users/:id", controller.getUserById);
 
+router.get("/admin/user-stats", controller.getUserStats);
+
 /**
  * @swagger
  * /users/{id}:

@@ -3,8 +3,11 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { BookOpen, Award, Clock, Bell } from 'lucide-react';
+import { useAuth } from "@/contexts/AuthContext";
 
 const StudentDashboard = () => {
+  const { userData, isAuthenticated } = useAuth();
+    
   // Mock data - in a real app, fetch this from your API
   const student = {
     name: "Alex Johnson",
@@ -32,7 +35,7 @@ const StudentDashboard = () => {
     <div className="space-y-6 animate-fade-in">
       {/* Welcome & Progress */}
       <div className="flex flex-col space-y-2">
-        <h1 className="text-3xl font-bold">Welcome back, {student.name}</h1>
+        <h1 className="text-3xl font-bold">Welcome, {userData?.name}</h1>
         <p className="text-muted-foreground">Here's an overview of your progress</p>
       </div>
 

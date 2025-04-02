@@ -1,5 +1,4 @@
-
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
   Card, 
   CardContent, 
@@ -13,54 +12,133 @@ import {
   AlertTriangle,
   Activity,
   UserCheck,
-  UserX 
+  UserX,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { useAuth } from '../../../contexts/AuthContext';
+import { useToast } from '@/components/ui/use-toast';
+import { quizService } from '@/services/quiz.service';
+import { userService } from '@/services/user.service';
+
+interface DashboardStats {
+  totalUsers: number;
+  activeUsers: number;
+  totalQuizzes: number;
+  pendingReviews: number;
+  recentUsers: Array<{
+    id: number;
+    name: string;
+    email: string;
+    status: string;
+    role: string;
+    joinDate: string;
+  }>;
+  recentQuizzes: Array<{
+    id: number;
+    title: string;
+    created: string;
+    status: string;
+    attempts: number;
+  }>;
+  userQuizPerformance: Array<{
+    category: string;
+    count: number;
+  }>;
+  totalAttempts: number;
+  weeklyAttempts: number;
+  monthlyQuizzes: number;
+}
 
 const AdminDashboard = () => {
-
   const { userData, isAuthenticated } = useAuth();
-  
-    // If not authenticated, show a login prompt or redirect
-    if (!isAuthenticated || !userData) {
-      return (
-        <div className="flex justify-center items-center h-full">
-          <p>Please log in to view your profile.</p>
-        </div>
-      );
-    }
+  const { toast } = useToast();
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Mock data - in a real app, fetch this from your API
-  const stats = {
-    totalUsers: 324,
-    activeUsers: 298,
-    totalQuizzes: 56,
-    pendingReviews: 12,
-    recentUsers: [
-      { id: 1, name: "Emma Wilson", email: "emma@example.com", status: "active", role: "student", joinDate: "2023-08-15" },
-      { id: 2, name: "James Brown", email: "james@example.com", status: "inactive", role: "student", joinDate: "2023-08-12" },
-      { id: 3, name: "Sophia Lee", email: "sophia@example.com", status: "active", role: "mentor", joinDate: "2023-08-10" }
-    ],
-    recentQuizzes: [
-      { id: 1, title: "JavaScript Fundamentals", created: "2023-08-14", status: "published", attempts: 87 },
-      { id: 2, title: "CSS Flexbox", created: "2023-08-10", status: "draft", attempts: 0 },
-      { id: 3, title: "React Hooks", created: "2023-08-05", status: "published", attempts: 42 }
-    ],
-    userQuizPerformance: [
-      { category: "Excellent (90%+)", count: 118 },
-      { category: "Good (70-89%)", count: 156 },
-      { category: "Average (50-69%)", count: 42 },
-      { category: "Poor (<50%)", count: 8 }
-    ]
-  };
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        setIsLoading(true);
+        
+        // Fetch all data in parallel
+        const [usersData, quizzesData, attemptsData] = await Promise.all([
+          userService.getUserStats(),
+          quizService.getQuizStats(),
+          quizService.getAttemptStats()
+        ]);
+
+        // Transform data into dashboard format
+        const dashboardStats: DashboardStats = {
+          totalUsers: usersData.totalUsers,
+          activeUsers: usersData.activeUsers,
+          totalQuizzes: quizzesData.totalQuizzes,
+          pendingReviews: quizzesData.pendingReviews,
+          recentUsers: usersData.recentUsers.map(user => ({
+            id: user.id,
+            name: `${user.firstName} ${user.lastName}`,
+            email: user.email,
+            status: user.isActive ? 'active' : 'inactive',
+            role: user.role,
+            joinDate: new Date(user.createdAt).toISOString().split('T')[0]
+          })),
+          recentQuizzes: quizzesData.recentQuizzes.map(quiz => ({
+            id: quiz.id,
+            title: quiz.title,
+            created: new Date(quiz.createdAt).toISOString().split('T')[0],
+            status: quiz.status,
+            attempts: quiz.attempts
+          })),
+          userQuizPerformance: [
+            { category: "Excellent (90%+)", count: attemptsData.excellentScores },
+            { category: "Good (70-89%)", count: attemptsData.goodScores },
+            { category: "Average (50-69%)", count: attemptsData.averageScores },
+            { category: "Poor (<50%)", count: attemptsData.poorScores }
+          ],
+          totalAttempts: attemptsData.totalAttempts,
+          weeklyAttempts: attemptsData.weeklyAttempts,
+          monthlyQuizzes: quizzesData.monthlyQuizzes
+        };
+
+        setStats(dashboardStats);
+      } catch (error) {
+        console.error('Error fetching dashboard data:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to load dashboard data',
+          variant: 'destructive',
+        });
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    if (isAuthenticated && userData) {
+      fetchDashboardData();
+    }
+  }, [isAuthenticated, userData, toast]);
+
+  if (!isAuthenticated || !userData) {
+    return (
+      <div className="flex justify-center items-center h-full">
+        <p>Please log in to view your profile.</p>
+      </div>
+    );
+  }
+
+  if (isLoading || !stats) {
+    return (
+      <div className="flex justify-center items-center h-full">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col space-y-2">
         <h1 className="text-3xl font-bold">Welcome, {userData?.name}</h1>
-        {/* <p className="text-muted-foreground">Manage your platform</p> */}
       </div>
 
       {/* Stats Cards */}
@@ -93,7 +171,7 @@ const AdminDashboard = () => {
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalQuizzes}</div>
             <p className="text-xs text-muted-foreground mt-2">
-              12 created this month
+              {stats.monthlyQuizzes} created this month
             </p>
           </CardContent>
         </Card>
@@ -106,9 +184,9 @@ const AdminDashboard = () => {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">1,247</div>
+            <div className="text-2xl font-bold">{stats.totalAttempts}</div>
             <p className="text-xs text-muted-foreground mt-2">
-              187 this week
+              {stats.weeklyAttempts} this week
             </p>
           </CardContent>
         </Card>

@@ -86,6 +86,27 @@ exports.getAllUsers = async (req, res) => {
   }
 };
 
+exports.getUserStats = async (req, res) => {
+  try {
+    const totalUsers = await User.count();
+    const activeUsers = await User.count({ where: { isVerified: true } });
+    const recentUsers = await User.findAll({
+      order: [['createdAt', 'DESC']],
+      limit: 3,
+      attributes: ['id', 'firstName', 'lastName', 'email', 'roleId', 'isVerified', 'createdAt']
+    });
+
+    res.status(200).send({
+      totalUsers,
+      activeUsers,
+      recentUsers
+    });
+  } catch (err) {
+    console.error('Error getting user stats:', err);
+    res.status(500).send({ message: "Error retrieving user statistics" });
+  }
+};
+
 exports.getUserById = (req, res) => {
   User.findByPk(req.params.id, {
     include: [

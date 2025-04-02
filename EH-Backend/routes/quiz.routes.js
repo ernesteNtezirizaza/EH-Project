@@ -303,4 +303,7 @@ router.get(
   quizController.getAttemptsForMentor
 );
 
+router.get("/admin/quiz-stats", quizController.getQuizStats);
+router.get("/admin/attempt-stats", quizController.getAttemptStats);
+
 module.exports = router;

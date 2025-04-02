@@ -17,12 +17,14 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { useAuth } from "@/contexts/AuthContext";
 
 const MentorDashboard = () => {
+  const { userData, isAuthenticated } = useAuth();
   // Mock data - in a real app, fetch this from your API
   const data = {
-    totalStudents: 78,
-    pendingReviews: 12,
+    totalStudents: 1,
+    pendingReviews: 1,
     messagesReceived: 24,
     averageReviewTime: "1.5 days",
     students: [
@@ -90,8 +92,8 @@ const MentorDashboard = () => {
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col space-y-2">
-        <h1 className="text-3xl font-bold">Mentor Dashboard</h1>
-        <p className="text-muted-foreground">Monitor student progress and provide support</p>
+        <h1 className="text-3xl font-bold">Welcome, {userData?.name}</h1>
+        <p className="text-muted-foreground">Monitor student progress and provide feedback</p>
       </div>
 
       {/* Stats Cards */}

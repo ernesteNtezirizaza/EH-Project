@@ -140,6 +140,37 @@ exports.getAllQuizzes = async (req, res) => {
   }
 };
 
+exports.getQuizStats = async (req, res) => {
+  try {
+    const totalQuizzes = await Quiz.count();
+    const pendingReviews = await QuizAttempt.count({
+      where: { mentor_feedback: null }
+    });
+    const recentQuizzes = await Quiz.findAll({
+      order: [['createdAt', 'DESC']],
+      limit: 3,
+      attributes: ['id', 'title', 'status', 'createdAt']
+    });
+    const monthlyQuizzes = await Quiz.count({
+      where: {
+        createdAt: {
+          [Op.gte]: new Date(new Date() - 30 * 24 * 60 * 60 * 1000)
+        }
+      }
+    });
+
+    res.status(200).send({
+      totalQuizzes,
+      pendingReviews,
+      recentQuizzes,
+      monthlyQuizzes
+    });
+  } catch (err) {
+    console.error('Error getting quiz stats:', err);
+    res.status(500).send({ message: "Error retrieving quiz statistics" });
+  }
+};
+
 exports.getQuizById = async (req, res) => {
   try {
     const quiz = await Quiz.findByPk(req.params.id, {
@@ -164,6 +195,39 @@ exports.getQuizById = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).send({ message: "Error retrieving quiz", error: err.message });
+  }
+};
+
+exports.getAttemptStats = async (req, res) => {
+  try {
+    const totalAttempts = await QuizAttempt.count();
+
+    const weeklyAttempts = await QuizAttempt.count({
+      where: {
+        completed_at: {
+          [Op.gte]: new Date(new Date() - 7 * 24 * 60 * 60 * 1000)
+        }
+      }
+    });
+
+    const scoreStats = await QuizAttempt.findAll({
+      attributes: [
+        [db.sequelize.literal(`SUM(CASE WHEN score >= 90 THEN 1 ELSE 0 END)`), 'excellentScores'],
+        [db.sequelize.literal(`SUM(CASE WHEN score >= 70 AND score < 90 THEN 1 ELSE 0 END)`), 'goodScores'],
+        [db.sequelize.literal(`SUM(CASE WHEN score >= 50 AND score < 70 THEN 1 ELSE 0 END)`), 'averageScores'],
+        [db.sequelize.literal(`SUM(CASE WHEN score < 50 THEN 1 ELSE 0 END)`), 'poorScores']
+      ],
+      raw: true
+    });
+
+    res.status(200).send({
+      totalAttempts,
+      weeklyAttempts,
+      ...scoreStats[0]
+    });
+  } catch (err) {
+    console.error('Error getting attempt stats:', err);
+    res.status(500).send({ message: "Error retrieving attempt statistics" });
   }
 };
 

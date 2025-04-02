@@ -197,5 +197,31 @@ export const quizService = {
       console.error(`Error fetching attempt details for ID ${attemptId}:`, error);
       throw error;
     }
+  },
+
+  getQuizStats: async () => {
+    try {
+      const response = await axios.get(
+        `${API_BASE_URL}/api/v1/admin/quiz-stats`,
+        // getAuthHeaders()
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching quiz stats:', error);
+      throw error;
+    }
+  },
+  
+  getAttemptStats: async () => {
+    try {
+      const response = await axios.get(
+        `${API_BASE_URL}/api/v1/admin/attempt-stats`,
+        // getAuthHeaders()
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching attempt stats:', error);
+      throw error;
+    }
   }
 };
