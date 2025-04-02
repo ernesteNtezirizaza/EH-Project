@@ -1,11 +1,12 @@
 const db = require("../models");
-const { Op } = require('sequelize');
+const { Op, where } = require('sequelize');
 
 const Quiz = db.Quiz;
 const Question = db.Question;
 const Option = db.Option;
 const QuizAttempt = db.QuizAttempt;
 const QuizAttemptAnswer = db.QuizAttemptAnswer;
+const sendEmail = require('../Utils/SendEmail')
 const User = db.User;
 
 // Admin Quiz Management
@@ -115,6 +116,7 @@ exports.getAllQuizzes = async (req, res) => {
     const quizzes = await Quiz.findAndCountAll({
       limit: parseInt(limit),
       offset: offset,
+      where: { status: "PUBLISHED" }, // Moved outside `include`
       include: [
         {
           model: User,
@@ -162,6 +164,89 @@ exports.getQuizById = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).send({ message: "Error retrieving quiz", error: err.message });
+  }
+};
+
+// Get detailed attempt information with questions and answers
+exports.getAttemptDetails = async (req, res) => {
+  try {
+    // Check authentication
+    if (!req.user || !req.user.id) {
+      return res.status(401).send({
+        message: "Unauthorized. User not found.",
+        error: "Authentication required"
+      });
+    }
+
+    const { id } = req.params;
+
+    // Find the attempt with all related data
+    const attempt = await QuizAttempt.findOne({
+      where: {
+        id: id
+      },
+      include: [
+        {
+          model: Quiz,
+          attributes: ['id', 'title', 'description', 'category']
+        },
+        {
+          model: User,
+          as: 'Mentor',
+          attributes: ['id', 'firstName', 'lastName']
+        },
+        {
+          model: QuizAttemptAnswer,
+          include: [
+            {
+              model: Question,
+              attributes: ['id', 'question_text', 'points'],
+              include: [
+                {
+                  model: Option,
+                  attributes: ['id', 'option_text', 'is_correct']
+                }
+              ]
+            },
+            {
+              model: Option,
+              attributes: ['id', 'option_text', 'is_correct']
+            }
+          ]
+        }
+      ]
+    });
+
+    if (!attempt) {
+      return res.status(404).send({ message: "Quiz attempt not found" });
+    }
+
+    // Format the response data
+    const responseData = {
+      id: attempt.id,
+      score: attempt.score,
+      time_taken: attempt.time_taken,
+      completed_at: attempt.completed_at,
+      mentor_feedback: attempt.mentor_feedback,
+      Quiz: attempt.Quiz,
+      Mentor: attempt.Mentor,
+      Answers: attempt.QuizAttemptAnswers.map(answer => ({
+        id: answer.id,
+        question_id: answer.question_id,
+        option_id: answer.option_id,
+        is_correct: answer.is_correct,
+        Question: answer.Question,
+        Option: answer.Option
+      }))
+    };
+
+    res.status(200).send(responseData);
+  } catch (err) {
+    console.error('Get Attempt Details Error:', err);
+    res.status(500).send({
+      message: "Error retrieving attempt details",
+      error: err.message
+    });
   }
 };
 
@@ -244,7 +329,7 @@ exports.deleteQuiz = async (req, res) => {
 // Submit quiz and calculate score
 exports.submitQuiz = async (req, res) => {
   try {
-    // Explicitly check if user is authenticated
+    // Check authentication
     if (!req.user || !req.user.id) {
       return res.status(401).send({
         message: "Unauthorized. User not found.",
@@ -255,9 +340,9 @@ exports.submitQuiz = async (req, res) => {
     const { quizId, answers, timeTaken } = req.body;
 
     // Validate required fields
-    if (!quizId || !answers || !timeTaken) {
+    if (!quizId) {
       return res.status(400).send({
-        message: "Quiz ID, answers, and time taken are required"
+        message: "Quiz ID is required"
       });
     }
 
@@ -273,14 +358,16 @@ exports.submitQuiz = async (req, res) => {
       return res.status(404).send({ message: "Quiz not found" });
     }
 
-    // Calculate score
+    // Calculate score and prepare attempt answers
     let correctAnswers = 0;
     const attemptAnswers = [];
 
     for (const question of quiz.Questions) {
-      const userAnswer = answers.find(a => a.questionId === question.id);
+      const userAnswer = answers ? answers.find(a => a.questionId === question.id) : null;
 
-      if (userAnswer) {
+      // Handle both answered and unanswered questions
+      if (userAnswer && userAnswer.optionId) {
+        // Case 1: Student answered this question
         const selectedOption = question.Options.find(o => o.id === userAnswer.optionId);
         const isCorrect = selectedOption ? selectedOption.is_correct : false;
 
@@ -293,20 +380,29 @@ exports.submitQuiz = async (req, res) => {
           option_id: userAnswer.optionId,
           is_correct: isCorrect
         });
+      } else {
+        // Case 2: Student didn't answer this question (time ran out or skipped)
+        attemptAnswers.push({
+          question_id: question.id,
+          option_id: null,  // Mark as unanswered
+          is_correct: false // Count as incorrect
+        });
       }
     }
 
-    const score = (correctAnswers / quiz.Questions.length) * 100;
+    // Calculate score (protect against division by zero)
+    const totalQuestions = quiz.Questions.length || 1;
+    const score = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
 
     // Create quiz attempt
     const attempt = await QuizAttempt.create({
       quiz_id: quizId,
       user_id: req.user.id,
       score: score,
-      time_taken: timeTaken
+      time_taken: timeTaken || 0 // Default to 0 if timeTaken not provided
     });
 
-    // Create attempt answers
+    // Create attempt answers (including unanswered questions)
     const answersWithAttemptId = attemptAnswers.map(answer => ({
       attempt_id: attempt.id,
       ...answer
@@ -322,11 +418,11 @@ exports.submitQuiz = async (req, res) => {
       raw: true
     });
 
-    // Update quiz with statistics AND set status to COMPLETED
+    // Update quiz status
     await quiz.update({
       attempts: totalAttempts,
       avg_score: avgScore[0].avg_score || 0,
-      status: 'COMPLETED'  // Add this line to update the status
+      status: 'COMPLETED'
     });
 
     res.status(201).send({
@@ -334,9 +430,10 @@ exports.submitQuiz = async (req, res) => {
       data: {
         score: score,
         correctAnswers: correctAnswers,
-        totalQuestions: quiz.Questions.length,
+        totalQuestions: totalQuestions,
         attemptId: attempt.id,
-        quizStatus: 'COMPLETED'  // Optional: include new status in response
+        quizStatus: 'COMPLETED',
+        unansweredQuestions: totalQuestions - answers.length // Add count of unanswered questions
       }
     });
   } catch (err) {
@@ -348,10 +445,83 @@ exports.submitQuiz = async (req, res) => {
   }
 };
 
+// Get quiz attempts with search and status filtering
+exports.getAttemptsForMentor = async (req, res) => {
+  try {
+    const { page = 1, limit = 10, search = '', status = 'all' } = req.query;
+    const offset = (page - 1) * limit;
+
+    // Build the where clause for QuizAttempt
+    const attemptWhere = {};
+    if (status === 'pending') {
+      attemptWhere.mentor_feedback = null;
+    } else if (status === 'graded') {
+      attemptWhere.mentor_feedback = { [Op.ne]: null };
+    }
+
+    // Build the where clause for search
+    const searchWhere = search ? {
+      [Op.or]: [
+        { '$Student.firstName$': { [Op.iLike]: `%${search}%` } },
+        { '$Student.lastName$': { [Op.iLike]: `%${search}%` } },
+        { '$Quiz.title$': { [Op.iLike]: `%${search}%` } }
+      ]
+    } : {};
+
+    const attempts = await QuizAttempt.findAndCountAll({
+      where: {
+        ...attemptWhere,
+        ...searchWhere
+      },
+      include: [
+        {
+          model: Quiz,
+          where: { status: 'COMPLETED' },
+          attributes: ['id', 'title', 'description', 'category'],
+          include: [{
+            model: Question,
+            attributes: ['id'],
+            required: false
+          }]
+        },
+        {
+          model: User,
+          as: 'Student',
+          attributes: ['id', 'firstName', 'lastName', 'email']
+        },
+        {
+          model: User,
+          as: 'Mentor',
+          attributes: ['id', 'firstName', 'lastName']
+        }
+      ],
+      limit: parseInt(limit),
+      offset: offset,
+      order: [['completed_at', 'DESC']]
+    });
+
+    // Format response with question counts
+    const formattedAttempts = attempts.rows.map(attempt => ({
+      ...attempt.get({ plain: true }),
+      question_count: attempt.Quiz.Questions?.length || 0
+    }));
+
+    res.status(200).send({
+      total: attempts.count,
+      attempts: formattedAttempts
+    });
+  } catch (err) {
+    console.error('Get Attempts Error:', err);
+    res.status(500).send({
+      message: "Error retrieving quiz attempts",
+      error: err.message
+    });
+  }
+};
+
 // Add mentor feedback to quiz attempt
 exports.addMentorFeedback = async (req, res) => {
   try {
-
     const { attemptId, feedback } = req.body;
 
     if (!attemptId || !feedback) {
@@ -360,9 +530,31 @@ exports.addMentorFeedback = async (req, res) => {
       });
     }
 
-    const attempt = await QuizAttempt.findByPk(attemptId);
+    const attempt = await QuizAttempt.findByPk(attemptId, {
+      include: [
+        {
+          model: User,
+          as: 'Student',
+          attributes: ['id', 'firstName', 'lastName', 'email']
+        },
+        {
+          model: Quiz,
+          attributes: ['id', 'title', 'status']
+        }
+      ]
+    });
+
     if (!attempt) {
       return res.status(404).send({ message: "Quiz attempt not found" });
+    }
+
+    // Get mentor info
+    const mentor = await User.findByPk(req.user.id, {
+      attributes: ['id', 'firstName', 'lastName']
+    });
+
+    if (!mentor) {
+      return res.status(404).send({ message: "Mentor not found" });
     }
 
     // Update attempt with mentor feedback
@@ -371,10 +563,50 @@ exports.addMentorFeedback = async (req, res) => {
       mentor_id: req.user.id
     });
 
-    res.status(200).send({
-      message: "Feedback added successfully",
-      data: attempt
+    // Update quiz status to REVIEWED
+    await Quiz.update(
+      { status: 'REVIEWED' },
+      { where: { id: attempt.quiz_id } }
+    );
+
+    // Send email to student
+    const studentName = `${attempt.Student.firstName} ${attempt.Student.lastName}`;
+    const mentorName = `${mentor.firstName} ${mentor.lastName}`;
+    const quizTitle = attempt.Quiz.title;
+    const subject = `Feedback on your ${quizTitle} submission`;
+
+    const html = `
+      <p>Hi <b>${studentName}</b>,</p>
+      <p>Your submission for <b>${quizTitle}</b> has been reviewed by <b>${mentorName}</b>.</p>
+      <p><b>Feedback:</b></p>
+      <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin: 10px 0;">
+        ${feedback}
+      </div>
+      <p>Score: <b>${attempt.score}%</b></p>
+      <br />
+      <p>Best Regards,<br />
+      Learning Platform Team</p>
+      <br />
+      <p>DISCLAIMER<br />
+      ------------------<br />
+      This email contains confidential information about your submission.<br />
+      If you did not expect this feedback, please contact support.</p>
+    `;
+
+    await sendEmail({
+      email: attempt.Student.email,
+      subject: subject,
+      html: html
     });
+
+    res.status(200).send({
+      message: "Feedback added successfully, quiz marked as REVIEWED, and email sent to student",
+      data: {
+        ...attempt.get({ plain: true }),
+        quiz_status: 'REVIEWED' // Include the new status in response
+      }
+    });
+
   } catch (err) {
     console.error('Feedback Error:', err);
     res.status(500).send({
@@ -409,6 +641,83 @@ exports.getStudentAttempts = async (req, res) => {
     console.error('Get Attempts Error:', err);
     res.status(500).send({
       message: "Error retrieving quiz attempts",
+      error: err.message
+    });
+  }
+};
+
+exports.getCompletedAttempts = async (req, res) => {
+  try {
+    if (!req.user || !req.user.id) {
+      return res.status(401).send({
+        message: "Unauthorized. User not found.",
+        error: "Authentication required"
+      });
+    }
+
+    const attempts = await QuizAttempt.findAndCountAll({
+      where: {
+        mentor_feedback: null
+      },
+      include: [
+        {
+          model: Quiz,
+          where: { status: 'COMPLETED' },
+          attributes: ['id', 'title', 'description', 'category'],
+          include: [{
+            model: Question,
+            attributes: ['id'],
+            required: false
+          }]
+        },
+        {
+          model: User,
+          attributes: ['id', 'firstName', 'lastName'],
+          as: 'Student'
+        },
+        {
+          model: User,
+          as: 'Mentor',
+          attributes: ['id', 'firstName', 'lastName']
+        }
+      ],
+      order: [['completed_at', 'DESC']]
+    });
+
+    // Get question counts for all quizzes in one query
+    const quizIds = attempts.rows.map(attempt => attempt.quiz_id);
+    const questionCounts = await Question.findAll({
+      attributes: [
+        'quiz_id',
+        [db.sequelize.fn('COUNT', db.sequelize.col('id')), 'question_count']
+      ],
+      where: {
+        quiz_id: quizIds
+      },
+      group: ['quiz_id'],
+      raw: true
+    });
+
+    // Create a map of quiz_id to question_count
+    const questionCountMap = questionCounts.reduce((acc, curr) => {
+      acc[curr.quiz_id] = curr.question_count;
+      return acc;
+    }, {});
+
+    // Format the response with question count
+    const formattedAttempts = attempts.rows.map(attempt => ({
+      ...attempt.get({ plain: true }),
+      question_count: questionCountMap[attempt.quiz_id] || 0
+    }));
+
+    res.status(200).send({
+      total: attempts.count,
+      attempts: formattedAttempts
+    });
+  } catch (err) {
+    console.error('Get Completed Attempts Error:', err);
+    res.status(500).send({
+      message: "Error retrieving completed attempts",
       error: err.message
     });
   }

@@ -99,7 +99,7 @@ const StudentQuizzes = () => {
   // Fetch quizzes using React Query
   const { data: quizzesData, isLoading, error } = useQuery({
     queryKey: ['student-quizzes', currentPage, pageSize],
-    queryFn: () => quizService.getAllQuizzes(currentPage - 1, pageSize)
+    queryFn: () => quizService.getAllPublishedQuizzes(currentPage - 1, pageSize)
   });
 
   // Fetch single quiz details when needed
@@ -222,34 +222,40 @@ const StudentQuizzes = () => {
     return (answeredCount / quizDetails.Questions.length) * 100;
   };
 
-  // Submit quiz
   const handleSubmitQuiz = async () => {
     if (!activeQuiz || !quizDetails) return;
-
+  
     setIsSubmitting(true);
-
+  
     try {
-      // Prepare answers for submission
-      const answers = Object.entries(selectedAnswers).map(([questionId, optionId]) => ({
-        questionId: parseInt(questionId),
-        optionId: optionId
-      }));
-
+      // Prepare answers - will be empty if time ran out
+      const answers = timeRemaining > 0 
+        ? Object.entries(selectedAnswers).map(([questionId, optionId]) => ({
+            questionId: parseInt(questionId),
+            optionId: optionId
+          }))
+        : []; // Empty array if time ran out
+  
       // Calculate time taken in seconds
       const timeTaken = (activeQuiz.duration * 60) - timeRemaining;
-
-      // Submit to backend
+  
+      // Submit to backend - will handle empty answers array
       const result = await quizService.submitQuiz(
         activeQuiz.id,
         answers,
         timeTaken
       );
-
+  
       // Update state with results
       setScore(result.data.score);
       setQuizCompleted(true);
-
-      toast.success(result.message);
+  
+      // Show appropriate message
+      if (result.data.unansweredQuestions > 0) {
+        toast.warning(`Time ran out! ${result.data.unansweredQuestions} questions weren't answered.`);
+      } else {
+        toast.success(result.message);
+      }
     } catch (error) {
       toast.error("Failed to submit quiz. Please try again.");
       console.error("Error submitting quiz:", error);
@@ -325,7 +331,7 @@ const StudentQuizzes = () => {
         variants={containerVariants}
       >
         <motion.div className="space-y-2" variants={itemVariants}>
-          <h1 className="text-3xl font-semibold tracking-tight">Available Quizzes</h1>
+          <h1 className="text-3xl font-semibold tracking-tight">Published Quizzes</h1>
           <p className="text-muted-foreground">Browse and take quizzes to test your knowledge</p>
         </motion.div>
 
@@ -341,7 +347,7 @@ const StudentQuizzes = () => {
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          <DropdownMenu>
+          {/* <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="h-10 flex items-center gap-2">
                 <Filter className="h-4 w-4" />
@@ -361,7 +367,7 @@ const StudentQuizzes = () => {
                 </DropdownMenuItem>
               </DropdownMenuGroup>
             </DropdownMenuContent>
-          </DropdownMenu>
+          </DropdownMenu> */}
         </motion.div>
 
         {/* Loading State */}
@@ -462,7 +468,7 @@ const StudentQuizzes = () => {
               <p className="text-muted-foreground">
                 {searchQuery
                   ? 'Try adjusting your search query'
-                  : 'There are currently no available quizzes'}
+                  : 'There are currently no published quizzes'}
               </p>
             </div>
           </motion.div>

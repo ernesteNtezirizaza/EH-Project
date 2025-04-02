@@ -40,8 +40,13 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ role, collapsed }) 
         return [
           ...commonItems,
           {
-            name: 'Available Quizzes',
+            name: 'Published Quizzes',
             path: '/dashboard/student/quizzes',
+            icon: <BookOpen className="w-5 h-5" />
+          },
+          {
+            name: 'My Quiz Attempts',
+            path: '/dashboard/student/attempts',
             icon: <BookOpen className="w-5 h-5" />
           },
           // {
@@ -68,6 +73,11 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ role, collapsed }) 
             path: '/dashboard/admin/quizzes',
             icon: <FileText className="w-5 h-5" />
           },
+          {
+            name: 'Students Submissions',
+            path: '/dashboard/admin/submissions',
+            icon: <FileText className="w-5 h-5" />
+          },
           // {
           //   name: 'User Progress',
           //   path: '/dashboard/admin/progress',
@@ -77,21 +87,21 @@ const DashboardSidebar: React.FC<DashboardSidebarProps> = ({ role, collapsed }) 
       case 'mentor':
         return [
           ...commonItems,
+          // {
+          //   name: 'Student Progress',
+          //   path: '/dashboard/mentor/progress',
+          //   icon: <CheckCircle className="w-5 h-5" />
+          // },
           {
-            name: 'Student Progress',
-            path: '/dashboard/mentor/progress',
-            icon: <CheckCircle className="w-5 h-5" />
-          },
-          {
-            name: 'Pending Submissions',
+            name: 'Students Submissions',
             path: '/dashboard/mentor/submissions',
             icon: <FileText className="w-5 h-5" />
           },
-          {
-            name: 'Student Support',
-            path: '/dashboard/mentor/support',
-            icon: <MessageSquare className="w-5 h-5" />
-          }
+          // {
+          //   name: 'Student Support',
+          //   path: '/dashboard/mentor/support',
+          //   icon: <MessageSquare className="w-5 h-5" />
+          // }
         ];
       default:
         return commonItems;

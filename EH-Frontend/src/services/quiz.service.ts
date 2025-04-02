@@ -10,11 +10,11 @@ const getAuthHeaders = () => {
     console.error('No user data found in localStorage');
     throw new Error('Authentication token not found');
   }
-  
+
   try {
     const userData = JSON.parse(storedData);
     const userToken = userData.userToken || userData.token; // Add fallback for token key
-    
+
     if (!userToken) {
       console.error('No token found in user data', userData);
       throw new Error('Authentication token is missing');
@@ -36,7 +36,7 @@ export const quizService = {
   createQuiz: async (quizData: CreateQuizPayload): Promise<Quiz> => {
     try {
       const response = await axios.post(
-        `${API_BASE_URL}/api/v1/quiz/create`, 
+        `${API_BASE_URL}/api/v1/quiz/create`,
         quizData,
         getAuthHeaders()
       );
@@ -48,7 +48,7 @@ export const quizService = {
   },
 
   // Get all quizzes with pagination
-  getAllQuizzes: async (page: number, limit: number): Promise<{ quizzes: Quiz[]; total: number }> => {
+  getAllPublishedQuizzes: async (page: number, limit: number): Promise<{ quizzes: Quiz[]; total: number }> => {
     try {
       const response = await axios.get(
         `${API_BASE_URL}/api/v1/quiz/all?page=${page}&limit=${limit}`,
@@ -79,7 +79,7 @@ export const quizService = {
   updateQuiz: async (quizData: UpdateQuizPayload): Promise<Quiz> => {
     try {
       const response = await axios.put(
-        `${API_BASE_URL}/api/v1/quiz/${quizData.id}`, 
+        `${API_BASE_URL}/api/v1/quiz/${quizData.id}`,
         quizData,
         // getAuthHeaders()
       );
@@ -99,6 +99,23 @@ export const quizService = {
       );
     } catch (error) {
       console.error(`Error deleting quiz with ID ${id}:`, error);
+      throw error;
+    }
+  },
+
+  // Add to quizService object
+  getMentorAttempts: async (page: number, limit: number, search: string = '', status: string = 'all') => {
+    try {
+      const response = await axios.get(
+        `${API_BASE_URL}/api/v1/mentor/attempts`,
+        {
+          ...getAuthHeaders(),
+          params: { page, limit, search, status }
+        }
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching mentor attempts:', error);
       throw error;
     }
   },
@@ -131,7 +148,7 @@ export const quizService = {
           attemptId,
           feedback
         },
-        // getAuthHeaders()
+        getAuthHeaders()
       );
       return response.data;
     } catch (error) {
@@ -145,11 +162,39 @@ export const quizService = {
     try {
       const response = await axios.get(
         `${API_BASE_URL}/api/v1/student/attempts`,
-        // getAuthHeaders()
+        getAuthHeaders()
       );
       return response.data;
     } catch (error) {
       console.error('Error fetching student attempts:', error);
+      throw error;
+    }
+  },
+
+  // Get completed quiz attempts for mentor review
+  getCompletedAttempts: async (page: number = 1, limit: number = 10) => {
+    try {
+      const response = await axios.get(
+        `${API_BASE_URL}/api/v1/mentor/submissions?page=${page}&limit=${limit}`,
+        getAuthHeaders()
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching completed attempts:', error);
+      throw error;
+    }
+  },
+
+  // Get detailed attempt information
+  getAttemptDetails: async (attemptId: number) => {
+    try {
+      const response = await axios.get(
+        `${API_BASE_URL}/api/v1/attempts/${attemptId}/details`,
+        getAuthHeaders()
+      );
+      return response.data;
+    } catch (error) {
+      console.error(`Error fetching attempt details for ID ${attemptId}:`, error);
       throw error;
     }
   }

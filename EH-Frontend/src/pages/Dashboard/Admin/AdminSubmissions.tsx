@@ -86,7 +86,7 @@ interface QuizAttempt {
   }[];
 }
 
-const MentorSubmissions = () => {
+const AdminSubmissions = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [openGradeDialog, setOpenGradeDialog] = useState(false);
@@ -279,7 +279,7 @@ const MentorSubmissions = () => {
     <div className="space-y-6 animate-fade-in">
       <div className="flex flex-col space-y-2">
         <h1 className="text-3xl font-bold">Quiz Submissions</h1>
-        <p className="text-muted-foreground">Review and provide feedback on completed quizzes</p>
+        <p className="text-muted-foreground">Check </p>
       </div>
 
       {/* Action Bar */}
@@ -378,7 +378,7 @@ const MentorSubmissions = () => {
 
                   <div className="flex justify-end mt-4">
                     {!isGraded ? (
-                      <Button onClick={() => openGrading(submission)}>Provide Feedback</Button>
+                      <Button disabled onClick={() => openGrading(submission)}>Provide Feedback</Button>
                     ) : (
                       <Button variant="outline" onClick={() => openGrading(submission)}>View Details</Button>
                     )}
@@ -570,4 +570,4 @@ const MentorSubmissions = () => {
   );
 };
 
-export default MentorSubmissions;
+export default AdminSubmissions;

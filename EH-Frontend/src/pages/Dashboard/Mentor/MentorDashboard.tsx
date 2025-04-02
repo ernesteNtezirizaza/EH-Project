@@ -205,7 +205,6 @@ const MentorDashboard = () => {
         <Card className="card-shadow">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-xl">Pending Submissions</CardTitle>
-            <Button variant="outline" size="sm">View All</Button>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">

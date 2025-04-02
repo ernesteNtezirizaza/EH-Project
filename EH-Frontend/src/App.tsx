@@ -17,6 +17,7 @@ import DashboardLayout from "./components/Dashboard/DashboardLayout";
 // Student Dashboard Pages
 import StudentDashboard from "./pages/Dashboard/Student/StudentDashboard";
 import StudentQuizzes from "./pages/Dashboard/Student/StudentQuizzes";
+import StudentAttempts from "./pages/Dashboard/Student/StudentAttempts";
 
 // Admin Dashboard Pages
 import AdminDashboard from "./pages/Dashboard/Admin/AdminDashboard";
@@ -26,6 +27,7 @@ import UserManagement from "./pages/Dashboard/Admin/UserManagement";
 // Mentor Dashboard Pages
 import MentorDashboard from "./pages/Dashboard/Mentor/MentorDashboard";
 import MentorSubmissions from "./pages/Dashboard/Mentor/MentorSubmissions";
+import AdminSubmissions from "./pages/Dashboard/Admin/AdminSubmissions.tsx";
 
 // Common Dashboard Pages
 import ProfilePage from "./pages/Dashboard/Common/ProfilePage";
@@ -54,8 +56,8 @@ const App = () => (
               <Route element={<DashboardLayout role="student" />}>
                 <Route index element={<StudentDashboard />} />
                 <Route path="quizzes" element={<StudentQuizzes />} />
-                <Route path="notifications" element={<div>Student Notifications Page</div>} />
                 <Route path="profile" element={<ProfilePage role="student" />} />
+                <Route path="attempts" element={<StudentAttempts />} />
               </Route>
             </Route>
             
@@ -66,6 +68,7 @@ const App = () => (
                 <Route path="users" element={<UserManagement />} />
                 <Route path="roles" element={<RoleManagement />} />
                 <Route path="quizzes" element={<AdminQuizManagement />} />
+                <Route path="submissions" element={<AdminSubmissions />} />
                 <Route path="profile" element={<ProfilePage role="admin" />} />
               </Route>
             </Route>

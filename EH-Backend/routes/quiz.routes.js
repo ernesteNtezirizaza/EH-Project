@@ -186,20 +186,121 @@ router.delete('/quiz/:id',
 // Quiz Attempt Routes
 router.post(
   '/quiz/:id/submit',
-  authJwt.protect,  // Add this middleware
+  authJwt.protect,
   quizController.submitQuiz
 );
 
 router.post(
   '/attempts/:id/feedback',
-  authJwt.protect,  // Add this middleware
+  authJwt.protect,
   quizController.addMentorFeedback
 );
 
 router.get(
   '/student/attempts',
-  authJwt.protect,  // Add this middleware
+  authJwt.protect,
   quizController.getStudentAttempts
+);
+
+/**
+ * @swagger
+ * /attempts/{id}/details:
+ *   get:
+ *     summary: Get detailed attempt information
+ *     tags: [Quiz Attempts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *         description: Quiz attempt ID
+ *     responses:
+ *       200:
+ *         description: Detailed attempt information
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/QuizAttemptDetails'
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: Attempt not found
+ *       500:
+ *         description: Error retrieving attempt details
+ */
+router.get(
+  '/attempts/:id/details',
+  authJwt.protect,
+  quizController.getAttemptDetails
+);
+
+/**
+ * @swagger
+ * /mentor/submissions:
+ *   get:
+ *     summary: Get completed quiz attempts for mentor review
+ *     tags: [Quiz Attempts]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of completed attempts needing review
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Error retrieving attempts
+ */
+router.get(
+  '/mentor/submissions',
+  authJwt.protect,
+  quizController.getCompletedAttempts
+);
+
+/**
+ * @swagger
+ * /mentor/attempts:
+ *   get:
+ *     summary: Get quiz attempts with search and filtering
+ *     tags: [Quiz Attempts]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: integer
+ *         description: Page number
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Number of items per page
+ *       - in: query
+ *         name: search
+ *         schema:
+ *           type: string
+ *         description: Search term (student name or quiz title)
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [all, pending, graded]
+ *         description: Filter by review status
+ *     responses:
+ *       200:
+ *         description: List of quiz attempts
+ *       401:
+ *         description: Unauthorized
+ *       500:
+ *         description: Error retrieving attempts
+ */
+router.get(
+  '/mentor/attempts',
+  authJwt.protect,
+  quizController.getAttemptsForMentor
 );
 
 module.exports = router;

@@ -123,7 +123,7 @@ const AdminQuizManagement = () => {
   // React Query hooks for data fetching and mutations
   const { data: quizzesData, isLoading, error } = useQuery({
     queryKey: ['quizzes', currentPage, pageSize],
-    queryFn: () => quizService.getAllQuizzes(currentPage - 1, pageSize)
+    queryFn: () => quizService.getAllPublishedQuizzes(currentPage - 1, pageSize)
   });
 
   const createQuizMutation = useMutation({

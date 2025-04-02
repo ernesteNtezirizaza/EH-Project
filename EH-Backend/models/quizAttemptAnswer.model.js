@@ -19,7 +19,7 @@ module.exports = (sequelize, Sequelize) => {
       },
       option_id: {
         type: Sequelize.INTEGER,
-        allowNull: false,
+        allowNull: true,
         references: {
           model: 'Options',
           key: 'id'
