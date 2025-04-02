@@ -189,22 +189,9 @@ const Contact = () => {
                 </div>
                 <div>
                   <h4 className="font-semibold text-lg mb-1">Phone</h4>
-                  <a href="tel:+250789123456" className="text-tech-600 hover:text-tech-700 transition-colors">
-                    +250 789 123 456
+                  <a href="tel:+250790728121" className="text-tech-600 hover:text-tech-700 transition-colors">
+                    +250 790 728 121
                   </a>
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Map or Image */}
-          <div className="animate-reveal">
-            <div className="rounded-2xl overflow-hidden shadow-sm border border-gray-100 h-64 bg-white">
-              <div className="h-full w-full bg-gray-200 flex items-center justify-center text-muted-foreground">
-                {/* Here you would typically embed a map */}
-                <div className="text-center p-6">
-                  <MapPin size={32} className="mx-auto mb-2 text-tech-500" />
-                  <p>Interactive map would be displayed here</p>
                 </div>
               </div>
             </div>
