@@ -18,6 +18,7 @@ This platform provides a robust solution for educational institutions to manage 
 ## Tech Stack
 
 - **Frontend**: React, TypeScript
+- **Backend**: Nodejs,Postgres,Sequelize
 - **UI Components**: Shadcn UI, Tailwind CSS
 - **State Management**: React Context API
 - **Charts**: Recharts
@@ -30,29 +31,41 @@ This platform provides a robust solution for educational institutions to manage 
 - Node.js (v14.0 or higher)
 - npm or yarn
 
-### Installation
+### Backend Installation
 
 1. Clone the repository
    ```
-   git clone https://github.com/yourusername/student-learning-platform.git
-   cd student-learning-platform
+   git clone http://github.com/ernesteNtezirizaza/EH-Project
+   cd EH-Project/EH-Backend
    ```
 
 2. Install dependencies
    ```
    npm install
-   # or
-   yarn install
    ```
 
 3. Start the development server
    ```
    npm run dev
-   # or
-   yarn dev
+   ```
+### Frontend Installation
+
+1. Clone the repository
+   ```
+   git clone http://github.com/ernesteNtezirizaza/EH-Project
+   cd EH-Project/EH-Frontend
    ```
 
-4. Open your browser and navigate to `http://localhost:5173`
+2. Install dependencies
+   ```
+   npm install
+   ```
+
+3. Start the development server
+   ```
+   npm run dev
+   ```
+4. Navigate to this link: http://localhost:8080/
 
 ## Project Structure
 
@@ -78,7 +91,7 @@ src/
 The dashboard provides an overview of important metrics and recent activities. It adapts its display based on the user's role:
 
 - **Students**: See their learning progress, upcoming assessments, and recent quiz results
-- **Instructors**: View class performance metrics and student activity
+- **Mentors**: View class performance metrics and student activity
 - **Administrators**: Access system-wide statistics and management tools
 
 ### Student Progress
@@ -96,7 +109,6 @@ Administrative interface for managing user accounts:
 
 - Create new users with role-based permissions
 - Edit existing user information
-- Deactivate/reactivate user accounts
 - Filter and search user database
 - Bulk actions for efficient management
 
@@ -106,8 +118,6 @@ To build the application for production:
 
 ```
 npm run build
-# or
-yarn build
 ```
 
 The build artifacts will be stored in the `dist/` directory, ready to be deployed to your preferred hosting platform.
